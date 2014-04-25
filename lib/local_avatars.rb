@@ -20,9 +20,21 @@ module LocalAvatarsPlugin
 	module LocalAvatars
 		def send_avatar(user)
 			av = user.attachments.find_by_description 'avatar'
-			send_file(av.diskfile, :filename => filename_for_content_disposition(av.filename),
-			                       :type => av.content_type, 
-			                       :disposition => (av.image? ? 'inline' : 'attachment')) if av 
+			if defined? RedmineS3
+				@attachment = av
+        if RedmineS3::Connection.proxy?
+          send_data RedmineS3::Connection.get(@attachment.disk_filename),
+                                          :filename => filename_for_content_disposition(@attachment.filename),
+                                          :type => detect_content_type(@attachment),
+                                          :disposition => (@attachment.image? ? 'inline' : 'attachment')
+        else
+          redirect_to(RedmineS3::Connection.object_url(@attachment.disk_filename))
+        end
+      else
+				send_file(av.diskfile, :filename => filename_for_content_disposition(av.filename),
+				                       :type => av.content_type, 
+				                       :disposition => (av.image? ? 'inline' : 'attachment')) if av 
+			end
 		end
 
 		# expects @user to be set.
